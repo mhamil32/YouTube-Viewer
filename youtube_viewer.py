@@ -70,19 +70,23 @@ print(bcolors.WARNING + f"""
 +{'-'*26} Version: {SCRIPT_VERSION} {'-'*26}+
 """ + bcolors.ENDC)
 
+# Initialize variables to store proxy, status, start time, and cancel status.
 proxy = None
 status = None
 start_time = None
 cancel_all = False
 
+# Initialize lists for storing URLs, queries, and suggested videos.
 urls = []
 queries = []
 suggested = []
 
+# Initialize variables for storing hash values of the input files.
 hash_urls = None
 hash_queries = None
 hash_config = None
 
+# Initialize dictionaries and lists for storing various view-related data and statistics.
 driver_dict = {}
 duration_dict = {}
 checked = {}
@@ -94,35 +98,39 @@ used_proxies = []
 temp_folders = []
 console = []
 
+# Initialize counters for threads and views.
 threads = 0
 views = 100
 
+# Create a Faker object for generating random data.
 fake = Faker()
+
+# Set up file paths and directories.
 cwd = os.getcwd()
 patched_drivers = os.path.join(cwd, 'patched_drivers')
 config_path = os.path.join(cwd, 'config.json')
 driver_identifier = os.path.join(cwd, 'patched_drivers', 'chromedriver')
-
 DATABASE = os.path.join(cwd, 'database.db')
 DATABASE_BACKUP = os.path.join(cwd, 'database_backup.db')
 
+# Define animation, headers, and viewports for console output and browser configuration.
 animation = ["⢿", "⣻", "⣽", "⣾", "⣷", "⣯", "⣟", "⡿"]
 headers_1 = ['Worker', 'Video Title', 'Watch / Actual Duration']
 headers_2 = ['Index', 'Video Title', 'Views']
-
 width = 0
 viewports = ['2560,1440', '1920,1080', '1440,900',
              '1536,864', '1366,768', '1280,1024', '1024,768']
 
+# Define referers for generating views.
 referers = ['https://search.yahoo.com/', 'https://duckduckgo.com/', 'https://www.google.com/',
             'https://www.bing.com/', 'https://t.co/', '']
-
 referers = choices(referers, k=len(referers)*3)
 
+# Set up console and database for the website module.
 website.console = console
 website.database = DATABASE
 
-
+# Define a function to monkey-patch the web driver executable to avoid detection by YouTube.
 def monkey_patch_exe(self):
     linect = 0
     replacement = self.gen_random_cdc()
@@ -135,16 +143,16 @@ def monkey_patch_exe(self):
                 linect += 1
         return linect
 
-
 Patcher.patch_exe = monkey_patch_exe
 
 
+# Define a function to return a formatted timestamp string for console output.
 def timestamp():
     global date_fmt
     date_fmt = datetime.now().strftime("%d-%b-%Y %H:%M:%S")
     return bcolors.OKGREEN + f'[{date_fmt}] | ' + bcolors.OKCYAN + f'{cpu_usage} | '
 
-
+# Define a function to clean temporary files and folders generated during script execution.
 def clean_exe_temp(folder):
     temp_name = None
     if hasattr(sys, '_MEIPASS'):
@@ -162,6 +170,7 @@ def clean_exe_temp(folder):
             shutil.rmtree(f, ignore_errors=True)
 
 
+# Define a function to update Chrome version information from a GitHub gist.
 def update_chrome_version():
     link = 'https://gist.githubusercontent.com/MShawon/29e185038f22e6ac5eac822a1e422e9d/raw/versions.txt'
 
@@ -170,7 +179,7 @@ def update_chrome_version():
 
     browsers.chrome_ver = chrome_versions
 
-
+# Define a function to check for updates to the YouTube Viewer script.
 def check_update():
     api_url = 'https://api.github.com/repos/MShawon/YouTube-Viewer/releases/latest'
     try:
@@ -195,7 +204,7 @@ def check_update():
     except Exception:
         pass
 
-
+# Define a function to create HTML content for console output.
 def create_html(text_dict):
     if len(console) > 250:
         console.pop()
@@ -209,6 +218,7 @@ def create_html(text_dict):
     console.insert(0, html)
 
 
+# Define a function to detect changes in the 'urls.txt' and 'search.txt' files and update the data structures accordingly.
 def detect_file_change():
     global hash_urls, hash_queries, urls, queries
 
@@ -222,7 +232,7 @@ def detect_file_change():
         queries = load_search()
         suggested.clear()
 
-
+# Define a function to determine whether to use a direct URL or a search query for generating views.
 def direct_or_search(position):
     keyword = None
     video_title = None
@@ -257,59 +267,69 @@ def direct_or_search(position):
     return url, method, youtube, keyword, video_title
 
 
-def features(driver):
+def features(driver): #The features function applies several enhancements to the YouTube video, such as saving bandwidth, bypassing popups, playing the video, and adjusting the playback speed.
     if bandwidth:
-        save_bandwidth(driver)
+        save_bandwidth(driver)  # If bandwidth is True, save bandwidth by disabling images and CSS
 
-    bypass_popup(driver)
+    bypass_popup(driver)  # Bypass any popup by clicking the "Skip Ad" button
 
-    bypass_other_popup(driver)
+    bypass_other_popup(driver)  # Bypass any other popup if present
 
-    play_video(driver)
+    play_video(driver)  # Play the video if it is paused
 
-    change_playback_speed(driver, playback_speed)
+    change_playback_speed(driver, playback_speed)  # Change the playback speed of the video
 
 
-def update_view_count(position):
-    view.append(position)
-    view_count = len(view)
+def update_view_count(position): #The update_view_count function updates the view count for each worker and prints the updated count to the console. If a database is being used, the function also updates the view count in the database.
+    view.append(position)  # Add the position to the view list
+    view_count = len(view)  # Calculate the number of views
+
+    # Print the worker position, view count, and other information to the console
     print(timestamp() + bcolors.OKCYAN +
           f'Worker {position} | View added : {view_count}' + bcolors.ENDC)
 
+    # Update the HTML output with the worker position, view count, and other information
     create_html({"#29b2d3": f'Worker {position} | View added : {view_count}'})
 
-    if database:
+    if database:  # If a database is being used
         try:
             update_database(
-                database=DATABASE, threads=max_threads)
+                database=DATABASE, threads=max_threads)  # Update the view count in the database
         except Exception:
             pass
 
+#The set_referer function sets a referer URL for the web driver, depending on the chosen method (direct URL or search query).
+# It handles cases where the referer is a Twitter short URL or a Yahoo search URL.
 
 def set_referer(position, url, method, driver):
-    referer = choice(referers)
-    if referer:
+    referer = choice(referers)  # Choose a random referer from the list of referers
+
+    if referer:  # If a referer is chosen
         if method == 2 and 't.co/' in referer:
-            driver.get(url)
+            driver.get(url)  # Navigate to the URL if the referer is a Twitter short URL and the method is search query
         else:
+            # If the referer is a Yahoo search URL, navigate to DuckDuckGo first
             if 'search.yahoo.com' in referer:
                 driver.get('https://duckduckgo.com/')
                 driver.execute_script(
                     "window.history.pushState('page2', 'Title', arguments[0]);", referer)
             else:
-                driver.get(referer)
+                driver.get(referer)  # Navigate to the referer URL
 
+            # Update the driver's location to the target URL
             driver.execute_script(
                 "window.location.href = '{}';".format(url))
 
+        # Print the worker position, referer, and other information to the console
         print(timestamp() + bcolors.OKBLUE +
               f"Worker {position} | Referer used : {referer}" + bcolors.ENDC)
 
+        # Update the HTML output with the worker position, referer, and other information
         create_html(
             {"#3b8eea": f"Worker {position} | Referer used : {referer}"})
 
     else:
-        driver.get(url)
+        driver.get(url)  # Navigate to the target URL without using a referer
 
 
 def youtube_normal(method, keyword, video_title, driver, output):
